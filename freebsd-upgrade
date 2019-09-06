@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# freebsd-uprade - a script to manage boot environments
+# Version 1.1
+# 2019 Bradley Alexander
+
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+
+# Make sure we're root.
+if [ "`id -u`" -ne 0 ] ; then
+  echo "This script must be run as root."
+  exit 1
+fi
+
+currentBE=`bectl list | grep NR | awk '{ print $1 }'`
+
+# Determine if the system updates require a new BE
+freebsd-update fetch | grep kernel > /dev/null 
+if [ "$?" = "0" ] ; then # Construct the new BE name
+  RELEASENAME=`freebsd-update fetch | grep "updating to" | head -1 | awk '{ print $12 }' | sed -e 's/://g'`
+  DATETIME=`date +%Y%m%d_%H%M`
+  newBE=${RELEASENAME}-${DATETIME}
+  echo "Generating new boot environment, $newBE..."
+  bectl create -e $currentBE $newBE
+  echo "Activating new boot environment"
+  bectl activate $newBE
+  bectl list
+  echo "Please reboot into the new BE, then execute freebsd-update install and reboot when complete."
+else
+  echo "No updates needed to update system."
+fi
